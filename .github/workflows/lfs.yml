@@ -1,80 +1,66 @@
-name: Mirroring To New GitHub Account
+name: LFS and Regular Sync Workflow
 
 on:
-    workflow_dispatch:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'
+
+env:
+  TARGET_ORG: tsvi-org
+  TARGET_REPO: lfs-new
+  TARGET_REPO_URL: git@github.com:${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}.git
+  SERVICE_ACCOUNT_EMAIL: machine@acme.com
+  SERVICE_ACCOUNT_NAME: machine
+
 
 jobs:
-    to_github:
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v3
-          with:
-            fetch-depth: 0 # Fetch all history for LFS objects
-            lfs: true # Fetch Git LFS files
+  lfs_sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Fetch all history for LFS objects
+          lfs: true # Fetch Git LFS files
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
+      - name: Ensure Git LFS is installed
+        run: |
+          if ! git lfs; then
+            sudo apt-get install git-lfs
+            git lfs install
+          fi
 
-        - name: Check available disk space
-          run: |
-            required_space=1000000 # Example: 1GB in KB
-            available_space=$(df --output=avail / | tail -n 1)
-            if [ "$available_space" -lt "$required_space" ]; then
-                echo "Insufficient disk space. Required: $required_space KB, Available: $available_space KB."
-                exit 1
-            else
-                echo "Sufficient disk space available. Current space: $available_space KB."
-            fi
-    
-        # - name: Setup Git LFS
-        #   run: | 
-        #     git lfs install
-        #     git lfs version # Ensure that Git LFS is installed
-        
-        - name: Check available disk space
-          run: df -h # Helps in diagnosing if the runner has enough space for LFS objects
+      - name: Add target repository as a remote
+        run: |
+          git remote add target git@github.com:${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}.git
+          git config --global user.email "${{ env.SERVICE_ACCOUNT_EMAIL }}"
+          git config --global user.name "${{ env.SERVICE_ACCOUNT_NAME }}"
 
-        - name: Fetch all LFS objects
-          run: |
-            if ! git lfs fetch --all; then
-                echo "Failed to fetch LFS objects. Attempting to list missing objects."
-                git lfs ls-files -I
-                exit 1
-            fi
-            echo "All LFS objects fetched successfully."
-            git lfs ls-files # List all LFS objects to confirm that they are fetched
+      - name: Push LFS objects to the target repository
+        run: |
+          branch_name=$(git rev-parse --abbrev-ref HEAD)
+          # Push LFS objects to the target repository
+          if ! git lfs push --all target HEAD:$branch_name; then
+            echo "Failed to push LFS objects to the target repository."
+            exit 1
+          fi
 
-        - name: Check for changes and merge if necessary
-          id: git-check
-          run: |
-            git fetch origin main
-            if git diff --quiet FETCH_HEAD..HEAD; then
-                echo "No changes to push."
-                echo "::set-output name=changes::false"
-            else
-                echo "Changes detected, attempting to merge."
-                if ! git merge FETCH_HEAD; then
-                    echo "Merge conflict detected. Alerting maintainers."
-                    echo "::set-output name=merge-conflict::true"
-                    exit 1
-                fi
-                echo "::set-output name=changes::true"
-            fi
-
-        # - name: Push changes to the remote repository
-        #   if: steps.git-check.outputs.changes == 'true'
-        #   env:
-        #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        #   run: |
-        #     branch_name=$(git rev-parse --abbrev-ref HEAD)
-        #     git push origin HEAD:$branch_name
-        #         if ! git lfs push --all origin HEAD:$branch_name; then
-        #           echo "Failed to push LFS objects."
-        #           exit 1
-        #         fi
-
-        # - name: Mirror to target repository
-        #   uses: pixta-dev/repository-mirroring-action@v1
-        #   with:
-        #         target_repo_url: git@github.com:myOrg/yourPeople3.git
-        #         ssh_private_key: ${{ secrets.TARGET_GITHUB_SSH_PRIVATE_KEY }}
-        #   env:
-        #     GIT_LFS_SKIP_SMUDGE: 1 # Skip LFS smudge to avoid downloading LFS objects during the push
+  regular_sync:
+    needs: lfs_sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+  
+      - name: Add target repository as a remote using SSH
+        run: |
+          git remote add target git@github.com:${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}.git
+          git config --global user.email "${{ env.SERVICE_ACCOUNT_EMAIL }}"
+          git config --global user.name "${{ env.SERVICE_ACCOUNT_NAME }}"
+  
+      - name: Push changes to the target repository (excluding LFS objects)
+        run: |
+          branch_name=$(git rev-parse --abbrev-ref HEAD)
+          # Push commits to the target repository
+          git push target HEAD:$branch_name
