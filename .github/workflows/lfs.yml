@@ -39,7 +39,7 @@ jobs:
         run: |
           branch_name=$(git rev-parse --abbrev-ref HEAD)
           # Push LFS objects to the target repository
-          if ! git lfs push --all target HEAD:$branch_name; then
+          if ! git lfs push --all target $branch_name; then
             echo "Failed to push LFS objects to the target repository."
             exit 1
           fi
