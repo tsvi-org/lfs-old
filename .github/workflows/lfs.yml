@@ -11,7 +11,6 @@ env:
   SERVICE_ACCOUNT_EMAIL: machine@acme.com
   SERVICE_ACCOUNT_NAME: machine
 
-
 jobs:
   lfs_sync:
     runs-on: ubuntu-latest
@@ -19,7 +18,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0 # Fetch all history for LFS objects
-          lfs: true # Fetch Git LFS files
+          lfs: true # Ensure Git LFS files are fetched
           ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Ensure Git LFS is installed
@@ -38,11 +37,10 @@ jobs:
       - name: Push LFS objects to the target repository
         run: |
           branch_name=$(git rev-parse --abbrev-ref HEAD)
-          # Push LFS objects to the target repository
-          if ! git lfs push --all target $branch_name; then
+          git lfs push --all target $branch_name || {
             echo "Failed to push LFS objects to the target repository."
             exit 1
-          fi
+          }
 
   regular_sync:
     needs: lfs_sync
@@ -50,6 +48,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
+          fetch-depth: 0 # Ensure you're fetching all history for consistency
+          lfs: true # This might be necessary if your regular sync relies on LFS objects
           ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
   
       - name: Add target repository as a remote using SSH
@@ -61,5 +61,7 @@ jobs:
       - name: Push changes to the target repository (excluding LFS objects)
         run: |
           branch_name=$(git rev-parse --abbrev-ref HEAD)
-          # Push commits to the target repository
-          git push target HEAD:$branch_name
+          git push target HEAD:$branch_name || {
+            echo "Failed to push commits to the target repository."
+            exit 1
+          }
