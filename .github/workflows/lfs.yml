@@ -21,7 +21,7 @@ jobs:
                 echo "Insufficient disk space. Required: $required_space KB, Available: $available_space KB."
                 exit 1
             else
-                echo "Sufficient disk space available."
+                echo "Sufficient disk space available. Current space: $available_space KB."
             fi
     
         # - name: Setup Git LFS
@@ -57,23 +57,24 @@ jobs:
                     exit 1
                 fi
                 echo "::set-output name=changes::true"
+            fi
 
-        - name: Push changes to the remote repository
-          if: steps.git-check.outputs.changes == 'true'
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          run: |
-            branch_name=$(git rev-parse --abbrev-ref HEAD)
-            git push origin HEAD:$branch_name
-                if ! git lfs push --all origin HEAD:$branch_name; then
-                  echo "Failed to push LFS objects."
-                  exit 1
-                fi
+        # - name: Push changes to the remote repository
+        #   if: steps.git-check.outputs.changes == 'true'
+        #   env:
+        #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        #   run: |
+        #     branch_name=$(git rev-parse --abbrev-ref HEAD)
+        #     git push origin HEAD:$branch_name
+        #         if ! git lfs push --all origin HEAD:$branch_name; then
+        #           echo "Failed to push LFS objects."
+        #           exit 1
+        #         fi
 
-        - name: Mirror to target repository
-          uses: pixta-dev/repository-mirroring-action@v1
-          with:
-                target_repo_url: git@github.com:myOrg/yourPeople3.git
-                ssh_private_key: ${{ secrets.TARGET_GITHUB_SSH_PRIVATE_KEY }}
-          env:
-            GIT_LFS_SKIP_SMUDGE: 1 # Skip LFS smudge to avoid downloading LFS objects during the push
+        # - name: Mirror to target repository
+        #   uses: pixta-dev/repository-mirroring-action@v1
+        #   with:
+        #         target_repo_url: git@github.com:myOrg/yourPeople3.git
+        #         ssh_private_key: ${{ secrets.TARGET_GITHUB_SSH_PRIVATE_KEY }}
+        #   env:
+        #     GIT_LFS_SKIP_SMUDGE: 1 # Skip LFS smudge to avoid downloading LFS objects during the push
