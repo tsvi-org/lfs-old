@@ -1,0 +1,79 @@
+name: Mirroring To New GitHub Account
+
+on:
+    workflow_dispatch:
+
+jobs:
+    to_github:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v3
+          with:
+            fetch-depth: 0 # Fetch all history for LFS objects
+            lfs: true # Fetch Git LFS files
+
+
+        - name: Check available disk space
+          run: |
+            required_space=1000000 # Example: 1GB in KB
+            available_space=$(df --output=avail / | tail -n 1)
+            if [ "$available_space" -lt "$required_space" ]; then
+                echo "Insufficient disk space. Required: $required_space KB, Available: $available_space KB."
+                exit 1
+            else
+                echo "Sufficient disk space available."
+            fi
+    
+        # - name: Setup Git LFS
+        #   run: | 
+        #     git lfs install
+        #     git lfs version # Ensure that Git LFS is installed
+        
+        - name: Check available disk space
+          run: df -h # Helps in diagnosing if the runner has enough space for LFS objects
+
+        - name: Fetch all LFS objects
+          run: |
+            if ! git lfs fetch --all; then
+                echo "Failed to fetch LFS objects. Attempting to list missing objects."
+                git lfs ls-files -I
+                exit 1
+            fi
+            echo "All LFS objects fetched successfully."
+            git lfs ls-files # List all LFS objects to confirm that they are fetched
+
+        - name: Check for changes and merge if necessary
+          id: git-check
+          run: |
+            git fetch origin main
+            if git diff --quiet FETCH_HEAD..HEAD; then
+                echo "No changes to push."
+                echo "::set-output name=changes::false"
+            else
+                echo "Changes detected, attempting to merge."
+                if ! git merge FETCH_HEAD; then
+                    echo "Merge conflict detected. Alerting maintainers."
+                    echo "::set-output name=merge-conflict::true"
+                    exit 1
+                fi
+                echo "::set-output name=changes::true"
+
+        - name: Push changes to the remote repository
+          if: steps.git-check.outputs.changes == 'true'
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          run: |
+            branch_name=$(git rev-parse --abbrev-ref HEAD)
+            git push origin HEAD:$branch_name
+                if ! git lfs push --all origin HEAD:$branch_name; then
+                  echo "Failed to push LFS objects."
+                  exit 1
+                fi
+
+        - name: Mirror to target repository
+          uses: pixta-dev/repository-mirroring-action@v1
+          with:
+                target_repo_url: git@github.com:myOrg/yourPeople3.git
+                ssh_private_key: ${{ secrets.TARGET_GITHUB_SSH_PRIVATE_KEY }}
+          env:
+            GIT_LFS_SKIP_SMUDGE: 1 # Skip LFS smudge to avoid downloading LFS objects during the push
