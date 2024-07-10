@@ -81,6 +81,20 @@ Before using the workflow, ensure the following environment variables are correc
 - `SERVICE_ACCOUNT_EMAIL`: The email associated with the service account performing the migration.
 - `SERVICE_ACCOUNT_NAME`: The name of the service account.
 
+# Considerations and potential constraints
+
+- The workflow is designed to work with repositories that have a manageable number of LFS objects. For repositories with a large number of LFS objects, consider breaking down the migration into smaller batches to avoid timeouts or resource constraints.
+
+- The workflow is configured to fetch the entire commit history of the legacy repository (`fetch-depth: 0`). This ensures that all commits and LFS objects are fetched, but it may impact the workflow's performance for repositories with extensive history.
+
+- The workflow uses SSH keys for authentication with the target repository. Ensure that the SSH keys are correctly set up and have the necessary permissions to push changes to the target repository.
+
+- The jobs are run on GitHub-hosted runners, which may have resource limitations. For large repositories or repositories with a significant number of LFS objects, consider running the workflow on larger runners or self-hosted runners to avoid resource constraints.
+
+- The workflow is designed to synchronize changes from the legacy repository to the new repository. It does not handle bidirectional synchronization or conflict resolution. Ensure that the new repository is set as the primary repository for future changes to avoid conflicts.
+
+- The workflow includes simple commands to clone, fetch, and push changes between repositories. For more complex migration scenarios or repositories with specific requirements, consider customizing the workflow to meet your needs. The idea here is that this is a starting point for a more complex workflow. There is definitely room for improvement and customization. That includes integrating actions from the marketplace, adding more error handling, more suffisticated orchestration, etc.
+
 ## Disclaimer
 
 This workflow is intended for use in scenarios where a full migration of a repository's history, including LFS objects, is required. It is recommended to test the workflow on a sample repository before applying it to a production repository to ensure compatibility and desired outcomes.
