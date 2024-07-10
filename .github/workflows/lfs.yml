@@ -1,67 +1,79 @@
 name: LFS and Regular Sync Workflow
 
+# This section defines when the workflow is triggered. It can be manually triggered or scheduled.
 on:
-  workflow_dispatch:
+  workflow_dispatch: # Allows manual trigger from GitHub UI.
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '0 0 * * *' # Scheduled to run at midnight UTC every day.
 
+# Environment variables used across the entire workflow.
 env:
-  TARGET_ORG: tsvi-org
-  TARGET_REPO: lfs-new
-  SERVICE_ACCOUNT_EMAIL: machine@acme.com
-  SERVICE_ACCOUNT_NAME: machine
+  TARGET_ORG: tsvi-org # The organization of the target repository.
+  TARGET_REPO: lfs-new # The name of the target repository.
+  SERVICE_ACCOUNT_EMAIL: machine@acme.com # Email for commits.
+  SERVICE_ACCOUNT_NAME: machine # Name for commits.
 
 jobs:
+  # Job for syncing Git LFS objects from the source to the target repository.
   lfs_sync:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest # Specifies the runner environment.
     steps:
       - uses: actions/checkout@v3
         with:
-          fetch-depth: 0 # Fetch all history for LFS objects
-          lfs: true # Ensure Git LFS files are fetched
-          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          fetch-depth: 0 # Fetches all history for branches and tags, necessary for LFS.
+          lfs: true # Ensures Git LFS tracked files are checked out.
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }} # SSH key for authentication.
 
       - name: Ensure Git LFS is installed
         run: |
-          if ! git lfs; then
-            sudo apt-get install git-lfs
-            git lfs install
+          if ! git lfs; then # Checks if Git LFS is not installed.
+            sudo apt-get install git-lfs # Installs Git LFS.
+            git lfs install # Initializes Git LFS.
           fi
 
       - name: Add target repository as a remote
         run: |
+          # Adds the target repository as a remote for pushing changes.
           git remote add target git@github.com:${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}.git
+          # Configures Git user details for commits.
           git config --global user.email "${{ env.SERVICE_ACCOUNT_EMAIL }}"
           git config --global user.name "${{ env.SERVICE_ACCOUNT_NAME }}"
 
       - name: Push LFS objects to the target repository
         run: |
+          # Determines the current branch name.
           branch_name=$(git rev-parse --abbrev-ref HEAD)
+          # Pushes all LFS objects to the target repository.
           git lfs push --all target $branch_name || {
             echo "Failed to push LFS objects to the target repository."
-            exit 1
+            exit 1 # Exits with error if push fails.
           }
 
+  # Job for syncing regular (non-LFS) files from the source to the target repository.
   regular_sync:
-    needs: lfs_sync
+    needs: lfs_sync # This job runs after the lfs_sync job completes successfully.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
-          fetch-depth: 0 # Ensure you're fetching all history for consistency
-          lfs: true # This might be necessary if your regular sync relies on LFS objects
+          fetch-depth: 0 # Fetches all history for consistency.
+          lfs: true # Fetches LFS objects, might be necessary for certain operations.
           ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
   
       - name: Add target repository as a remote using SSH
         run: |
+          # Adds the target repository as a remote for pushing changes.
           git remote add target git@github.com:${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}.git
+          # Configures Git user details for commits.
           git config --global user.email "${{ env.SERVICE_ACCOUNT_EMAIL }}"
           git config --global user.name "${{ env.SERVICE_ACCOUNT_NAME }}"
   
       - name: Push changes to the target repository (excluding LFS objects)
         run: |
+          # Determines the current branch name.
           branch_name=$(git rev-parse --abbrev-ref HEAD)
+          # Pushes changes to the target repository, excluding LFS objects.
           git push target HEAD:$branch_name || {
             echo "Failed to push commits to the target repository."
-            exit 1
+            exit 1 # Exits with error if push fails.
           }
