@@ -81,7 +81,7 @@ Before using the workflow, ensure the following environment variables are correc
 - `SERVICE_ACCOUNT_EMAIL`: The email associated with the service account performing the migration.
 - `SERVICE_ACCOUNT_NAME`: The name of the service account.
 
-# Considerations and potential constraints
+## Considerations and potential constraints
 
 - The workflow is designed to work with repositories that have a manageable number of LFS objects. For repositories with a large number of LFS objects, consider breaking down the migration into smaller batches to avoid timeouts or resource constraints.
 
