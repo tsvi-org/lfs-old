@@ -64,8 +64,13 @@ jobs:
         with:
           fetch-depth: 0 # Fetches all history for consistency.
           lfs: true # Fetches LFS objects, might be necessary for certain operations.
-          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
   
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.TARGET_REPO_SSH_KEY }}
+
       - name: Add target repository as a remote using SSH
         run: |
           # Adds the target repository as a remote for pushing changes.
