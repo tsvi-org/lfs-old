@@ -22,8 +22,13 @@ jobs:
         with:
           fetch-depth: 0 # Fetches all history for branches and tags, necessary for LFS.
           lfs: true # Ensures Git LFS tracked files are checked out.
-          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }} # SSH key for authentication.
-
+          # ssh-key: ${{ secrets.SSH_PRIVATE_KEY }} # SSH key for authentication.
+      
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.TARGET_REPO_SSH_KEY }}
+      
       - name: Ensure Git LFS is installed
         run: |
           if ! git lfs; then # Checks if Git LFS is not installed.
@@ -34,7 +39,8 @@ jobs:
       - name: Add target repository as a remote
         run: |
           # Adds the target repository as a remote for pushing changes.
-          git remote add target git@github.com:${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}.git
+          # git remote add target git@github.com:${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}.git
+          git remote add target org-141943489@github.com:tsviz-org/lfs-new.git
           # Configures Git user details for commits.
           git config --global user.email "${{ env.SERVICE_ACCOUNT_EMAIL }}"
           git config --global user.name "${{ env.SERVICE_ACCOUNT_NAME }}"
@@ -63,7 +69,8 @@ jobs:
       - name: Add target repository as a remote using SSH
         run: |
           # Adds the target repository as a remote for pushing changes.
-          git remote add target git@github.com:${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}.git
+          # git remote add target git@github.com:${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}.git
+          git remote add target org-141943489@github.com:tsviz-org/lfs-new.git
           # Configures Git user details for commits.
           git config --global user.email "${{ env.SERVICE_ACCOUNT_EMAIL }}"
           git config --global user.name "${{ env.SERVICE_ACCOUNT_NAME }}"
