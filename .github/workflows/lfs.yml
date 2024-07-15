@@ -30,7 +30,7 @@ on:
 
       ssh_debug_enabled:
         type: boolean
-        description: 'Run the build/test with ssh debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
+        description: 'Run job/s with ssh debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
         required: false
 
   schedule:
