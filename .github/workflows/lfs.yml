@@ -28,6 +28,11 @@ on:
         type: string
         default: 'lfs-new'
 
+      git_debug_enabled:
+        type: boolean
+        description: 'Run job/s with Git commands debugging enabled'
+        required: false
+
       ssh_debug_enabled:
         type: boolean
         description: 'Run job/s with ssh debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
@@ -42,7 +47,7 @@ env:
   TARGET_REPO: ${{ github.event.inputs.target_repo }} # The name of the target repository.
   SERVICE_ACCOUNT_EMAIL: machine@acme.com # Email for commits.
   SERVICE_ACCOUNT_NAME: machine # Name for commits.
-  GIT_TRACE: 1 # Enables Git trace for debugging.
+  GIT_TRACE: ${{ github.event.inputs.git_debug_enabled }} # Enables Git trace for debugging.
 
 jobs:
   # Job for syncing Git LFS objects from the source to the target repository.
