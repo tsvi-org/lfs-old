@@ -3,26 +3,56 @@ name: LFS and Regular Sync Workflow
 # This section defines when the workflow is triggered. It can be manually triggered or scheduled.
 on:
   workflow_dispatch: # Allows manual trigger from GitHub UI.
+     inputs:
+      lfs_sync: # Input for syncing LFS objects.
+        description: 'Sync LFS objects'
+        required: false
+        type: boolean
+        default: true
+
+      regular_sync: # Input for syncing regular files.
+        description: 'Sync regular files'
+        required: false
+        type: boolean
+        default: true
+
+      target_org: # Input for the target organization.
+        description: 'Target organization'
+        required: true
+        type: string
+        default: 'tsvi-org'
+
+      target_repo: # Input for the target repository.
+        description: 'Target repository'
+        required: true
+        type: string
+        default: 'lfs-new'
+
+      ssh_debug_enabled:
+        type: boolean
+        description: 'Run the build/test with ssh debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
+        required: false
+
   schedule:
     - cron: '0 0 * * *' # Scheduled to run at midnight UTC every day.
 
 # Environment variables used across the entire workflow.
 env:
-  TARGET_ORG: tsvi-org # The organization of the target repository.
-  TARGET_REPO: lfs-new # The name of the target repository.
+  TARGET_ORG: ${{ github.event.inputs.target_org }} # The name of the target organization.
+  TARGET_REPO: ${{ github.event.inputs.target_repo }} # The name of the target repository.
   SERVICE_ACCOUNT_EMAIL: machine@acme.com # Email for commits.
   SERVICE_ACCOUNT_NAME: machine # Name for commits.
 
 jobs:
   # Job for syncing Git LFS objects from the source to the target repository.
   lfs_sync:
+    if: ${{ github.event.inputs.lfs_sync == 'true' }}
     runs-on: ubuntu-latest # Specifies the runner environment.
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0 # Fetches all history for branches and tags, necessary for LFS.
           lfs: true # Ensures Git LFS tracked files are checked out.
-          # ssh-key: ${{ secrets.SSH_PRIVATE_KEY }} # SSH key for authentication.
       
       - name: Set up SSH agent
         uses: webfactory/ssh-agent@v0.9.0
@@ -39,12 +69,15 @@ jobs:
       - name: Add target repository as a remote
         run: |
           # Adds the target repository as a remote for pushing changes.
-          # git remote add target git@github.com:${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}.git
-          git remote add target org-141943489@github.com:tsviz-org/lfs-new.git
+          git remote add target git@github.com:${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}.git
           # Configures Git user details for commits.
           git config --global user.email "${{ env.SERVICE_ACCOUNT_EMAIL }}"
           git config --global user.name "${{ env.SERVICE_ACCOUNT_NAME }}"
 
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.ssh_debug_enabled }}
+      
       - name: Push LFS objects to the target repository
         run: |
           # Determines the current branch name.
@@ -57,6 +90,7 @@ jobs:
 
   # Job for syncing regular (non-LFS) files from the source to the target repository.
   regular_sync:
+    if: ${{ github.event.inputs.regular_sync == 'true' }}
     needs: lfs_sync # This job runs after the lfs_sync job completes successfully.
     runs-on: ubuntu-latest
     steps:
@@ -64,7 +98,6 @@ jobs:
         with:
           fetch-depth: 0 # Fetches all history for consistency.
           lfs: true # Fetches LFS objects, might be necessary for certain operations.
-          # ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
   
       - name: Set up SSH agent
         uses: webfactory/ssh-agent@v0.9.0
@@ -74,12 +107,15 @@ jobs:
       - name: Add target repository as a remote using SSH
         run: |
           # Adds the target repository as a remote for pushing changes.
-          # git remote add target git@github.com:${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}.git
-          git remote add target org-141943489@github.com:tsviz-org/lfs-new.git
+          git remote add target git@github.com:${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}.git
           # Configures Git user details for commits.
           git config --global user.email "${{ env.SERVICE_ACCOUNT_EMAIL }}"
           git config --global user.name "${{ env.SERVICE_ACCOUNT_NAME }}"
-  
+      
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.ssh_debug_enabled }}
+      
       - name: Push changes to the target repository (excluding LFS objects)
         run: |
           # Determines the current branch name.
