@@ -80,6 +80,31 @@ Before using the workflow, ensure the following environment variables are correc
 - `TARGET_REPO`: The name of the target repository.
 - `SERVICE_ACCOUNT_EMAIL`: The email associated with the service account performing the migration.
 - `SERVICE_ACCOUNT_NAME`: The name of the service account.
+- `TARGET_REPO_SSH_KEY`: The SSH private key used for authentication with the target repository. This key should be added as a deploy key to the target repositories. See the section "Adding a Deploy Key for Repository Deployment" for instructions on how to add the deploy key.
+
+## Adding a Deploy Key for Repository Deployment
+
+To enable the `webfactory/ssh-agent@v0.9.0` action to deploy changes to the target repository, a deploy key must be added to the target repository. Deploy keys are SSH keys that grant access to a single GitHub repository. This section outlines the steps to add a deploy key and configure the workflow to use this key.
+
+### Step 1: Add the SSH Key to the Target Repository
+
+1. Navigate to the GitHub page of your **target** repository.
+2. Go to **Settings** > **Deploy keys**.
+3. Click on **Add deploy key**, enter a title for the key, and paste the content of your SSH **public** key into the key field.
+4. Ensure that the **Allow write access** option is checked if you want this key to have write access to the repository, allowing you to push changes.
+5. Click **Add key**.
+
+### Step 2: Add the Private Key to GitHub Secrets
+
+1. Navigate to the GitHub page of your source repository where the workflow is configured.
+2. Go to **Settings** > **Secrets and variables** > **Actions**.
+3. Click on **New repository secret**.
+4. Name the secret `TARGET_REPO_SSH_KEY` and paste the content of your SSH private key into the value field.
+5. Click **Add secret**.
+
+### Step 3: Update the Workflow to Use the Deploy Key
+
+Ensure your workflow file uses the secret for the SSH key. The `webfactory/ssh-agent@v0.9.0` action should be configured to use the `TARGET_REPO_SSH_KEY` secret, allowing the workflow to authenticate with the target repository using the deploy key, enabling it to push changes securely.
 
 ## Considerations and potential constraints
 
