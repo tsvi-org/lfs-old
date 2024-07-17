@@ -120,6 +120,8 @@ Ensure your workflow file uses the secret for the SSH key. The `webfactory/ssh-a
 
 - The workflow includes simple commands to clone, fetch, and push changes between repositories. For more complex migration scenarios or repositories with specific requirements, consider customizing the workflow to meet your needs. The idea here is that this is a starting point for a more complex workflow. There is definitely room for improvement and customization. That includes integrating actions from the marketplace, adding more error handling, more suffisticated orchestration, etc.
 
+- Each job is configured with ubuntu-latest as the runner. If you need to use a different operating system or runner type, you can modify the runs-on parameter in the workflow file. For example, you can use windows-latest or macos-latest for Windows or macOS runners, respectively. Another reason why you might want to use a different runner is that you may need more resources than the default runner provides. For example, if you have a large repository with a lot of LFS objects, you may need more memory or disk space than the default runner provides. In that case, you can use larger runners or self-hosted runners to avoid resource constraints.
+
 ## Disclaimer
 
 This workflow is intended for use in scenarios where a full migration of a repository's history, including LFS objects, is required. It is recommended to test the workflow on a sample repository before applying it to a production repository to ensure compatibility and desired outcomes.
